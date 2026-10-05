@@ -5,10 +5,12 @@ node_modules/
 dist/
 build/
 
-# Environment
+# Environment (NEVER commit secrets)
 .env
 .env.local
 .env.*.local
+# Keep .env.example for reference
+!.env.example
 
 # IDE
 .vscode/

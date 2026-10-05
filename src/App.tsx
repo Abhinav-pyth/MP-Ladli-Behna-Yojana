@@ -1,4 +1,5 @@
 import { useState, useEffect, FormEvent, useCallback } from 'react';
+import { supabase, isSupabaseConfigured, QUERIES_TABLE } from './lib/supabase';
 
 type Language = 'hi' | 'en';
 
@@ -13,6 +14,7 @@ interface QueryEntry {
 
 const ADMIN_PASSWORD = 'admin2026';
 const STORAGE_KEY = 'ladlibehna_queries';
+const USE_SUPABASE = isSupabaseConfigured();
 
 const translations = {
   hi: {
@@ -293,29 +295,93 @@ const translations = {
   },
 };
 
-// Utility functions for localStorage
-function getStoredQueries(): QueryEntry[] {
-  try {
-    const data = localStorage.getItem(STORAGE_KEY);
-    return data ? JSON.parse(data) : [];
-  } catch {
-    return [];
+// Utility functions - Supabase or localStorage
+async function getStoredQueries(): Promise<QueryEntry[]> {
+  if (USE_SUPABASE) {
+    const { data, error } = await supabase
+      .from(QUERIES_TABLE)
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    if (error) {
+      console.error('Error fetching queries:', error);
+      return [];
+    }
+    
+    return (data || []).map((item: any) => ({
+      id: item.id,
+      name: item.name,
+      mobile: item.mobile,
+      district: item.district,
+      query: item.query,
+      timestamp: item.created_at,
+    }));
+  } else {
+    try {
+      const data = localStorage.getItem(STORAGE_KEY);
+      return data ? JSON.parse(data) : [];
+    } catch {
+      return [];
+    }
   }
 }
 
-function saveQuery(entry: QueryEntry): void {
-  const queries = getStoredQueries();
-  queries.unshift(entry); // Add to beginning (newest first)
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(queries));
+async function saveQuery(entry: Omit<QueryEntry, 'id' | 'timestamp'>): Promise<void> {
+  if (USE_SUPABASE) {
+    const { error } = await supabase
+      .from(QUERIES_TABLE)
+      .insert({
+        name: entry.name,
+        mobile: entry.mobile,
+        district: entry.district,
+        query: entry.query,
+      });
+    
+    if (error) {
+      console.error('Error saving query:', error);
+    }
+  } else {
+    const queries = await getStoredQueries();
+    const newEntry = {
+      ...entry,
+      id: generateId(),
+      timestamp: new Date().toISOString(),
+    };
+    queries.unshift(newEntry);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(queries));
+  }
 }
 
-function deleteAllQueries(): void {
-  localStorage.removeItem(STORAGE_KEY);
+async function deleteAllQueries(): Promise<void> {
+  if (USE_SUPABASE) {
+    const { error } = await supabase
+      .from(QUERIES_TABLE)
+      .delete()
+      .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all
+    
+    if (error) {
+      console.error('Error deleting all queries:', error);
+    }
+  } else {
+    localStorage.removeItem(STORAGE_KEY);
+  }
 }
 
-function deleteOneQuery(id: string): void {
-  const queries = getStoredQueries().filter(q => q.id !== id);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(queries));
+async function deleteOneQuery(id: string): Promise<void> {
+  if (USE_SUPABASE) {
+    const { error } = await supabase
+      .from(QUERIES_TABLE)
+      .delete()
+      .eq('id', id);
+    
+    if (error) {
+      console.error('Error deleting query:', error);
+    }
+  } else {
+    const queries = await getStoredQueries();
+    const filtered = queries.filter(q => q.id !== id);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+  }
 }
 
 function generateId(): string {
@@ -348,8 +414,9 @@ export default function App() {
   const t = translations[lang];
 
   // Load stored queries when admin panel opens
-  const refreshQueries = useCallback(() => {
-    setStoredQueries(getStoredQueries());
+  const refreshQueries = useCallback(async () => {
+    const queries = await getStoredQueries();
+    setStoredQueries(queries);
   }, []);
 
   // Check for #admin in URL on load
@@ -413,19 +480,16 @@ export default function App() {
     return Object.keys(errors).length === 0;
   };
 
-  const handleFormSubmit = (e: FormEvent) => {
+  const handleFormSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (validateForm()) {
-      // Save to localStorage
-      const entry: QueryEntry = {
-        id: generateId(),
+      // Save to Supabase or localStorage
+      await saveQuery({
         name: formData.name,
         mobile: formData.mobile,
         district: formData.district,
         query: formData.query,
-        timestamp: new Date().toISOString(),
-      };
-      saveQuery(entry);
+      });
 
       setShowModal(true);
       setFormData({ name: '', mobile: '', district: '', query: '' });
@@ -450,16 +514,16 @@ export default function App() {
     window.location.hash = '';
   };
 
-  const handleDeleteAll = () => {
+  const handleDeleteAll = async () => {
     if (confirm(t.admin.confirmDelete)) {
-      deleteAllQueries();
-      refreshQueries();
+      await deleteAllQueries();
+      await refreshQueries();
     }
   };
 
-  const handleDeleteOne = (id: string) => {
-    deleteOneQuery(id);
-    refreshQueries();
+  const handleDeleteOne = async (id: string) => {
+    await deleteOneQuery(id);
+    await refreshQueries();
   };
 
   const handleExportData = () => {
@@ -943,6 +1007,49 @@ export default function App() {
             </div>
 
             <div className="p-6 md:p-8">
+              {/* Configuration Status Banner */}
+              {!USE_SUPABASE && (
+                <div className="mb-6 bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-lg">
+                  <div className="flex items-start gap-3">
+                    <span className="text-2xl">⚠️</span>
+                    <div>
+                      <h4 className="font-bold text-yellow-800 mb-1">
+                        {lang === 'hi' ? 'Supabase कॉन्फ़िगर नहीं है' : 'Supabase Not Configured'}
+                      </h4>
+                      <p className="text-yellow-700 text-sm mb-2">
+                        {lang === 'hi' 
+                          ? 'आप केवल अपने डिवाइस पर सबमिट की गई क्वेरी देख रहे हैं। अन्य उपयोगकर्ताओं की क्वेरी देखने के लिए, कृपया Supabase सेटअप करें।'
+                          : 'You are only viewing queries submitted on YOUR device. To see queries from ALL users, please set up Supabase.'}
+                      </p>
+                      <details className="mt-2">
+                        <summary className="cursor-pointer text-yellow-800 font-medium text-sm hover:underline">
+                          {lang === 'hi' ? 'सेटअप निर्देश देखें' : 'View Setup Instructions'}
+                        </summary>
+                        <div className="mt-2 text-xs text-yellow-700 space-y-1">
+                          <p>1. {lang === 'hi' ? 'Supabase अकाउंट बनाएं:' : 'Create Supabase account:'} <a href="https://supabase.com" target="_blank" rel="noopener" className="underline">supabase.com</a></p>
+                          <p>2. {lang === 'hi' ? 'नया प्रोजेक्ट बनाएं और SQL Editor में setup.sql चलाएं' : 'Create project & run setup.sql in SQL Editor'}</p>
+                          <p>3. .env.example को .env.local में कॉपी करें और अपनी keys डालें</p>
+                          <p>4. {lang === 'hi' ? 'ऐप पुनः लोड करें' : 'Reload the app'}</p>
+                        </div>
+                      </details>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {USE_SUPABASE && (
+                <div className="mb-6 bg-green-50 border-l-4 border-green-400 p-4 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">✅</span>
+                    <p className="text-green-700 text-sm font-medium">
+                      {lang === 'hi' 
+                        ? 'Supabase कनेक्टेड — सभी उपयोगकर्ताओं की क्वेरी यहाँ दिख रही हैं'
+                        : 'Supabase Connected — Viewing queries from ALL users'}
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {!adminAuthenticated ? (
                 /* Login Form */
                 <div className="max-w-sm mx-auto py-12">
