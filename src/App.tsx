@@ -1,5 +1,6 @@
 import { useState, useEffect, FormEvent, useCallback } from 'react';
 import { getSupabase, isSupabaseConfigured, QUERIES_TABLE } from './lib/supabase';
+import { AdManager, AdInContent } from './components/AdManager';
 
 type Language = 'hi' | 'en';
 
@@ -551,7 +552,10 @@ export default function App() {
   }, [lang]);
 
   return (
-    <div className="min-h-screen bg-gray-50 font-sans">
+    <div className="min-h-screen bg-gray-50 font-sans pb-16 md:pb-0">
+      {/* Ad Manager - Global ads + banners */}
+      <AdManager />
+      
       {/* Header / Navigation */}
       <header className="bg-gradient-to-r from-blue-900 via-blue-800 to-blue-900 text-white shadow-lg sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 py-3">
@@ -809,6 +813,9 @@ export default function App() {
           </div>
         </div>
       </section>
+
+      {/* In-Content Ad (Desktop) */}
+      <AdInContent />
 
       {/* Application Procedure */}
       <section id="procedure" className="py-16 md:py-20 bg-white">
