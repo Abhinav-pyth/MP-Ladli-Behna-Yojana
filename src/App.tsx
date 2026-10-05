@@ -1,5 +1,5 @@
 import { useState, useEffect, FormEvent, useCallback } from 'react';
-import { supabase, isSupabaseConfigured, QUERIES_TABLE } from './lib/supabase';
+import { getSupabase, isSupabaseConfigured, QUERIES_TABLE } from './lib/supabase';
 
 type Language = 'hi' | 'en';
 
@@ -298,7 +298,9 @@ const translations = {
 // Utility functions - Supabase or localStorage
 async function getStoredQueries(): Promise<QueryEntry[]> {
   if (USE_SUPABASE) {
-    const { data, error } = await supabase
+    const client = getSupabase();
+    if (!client) return [];
+    const { data, error } = await client
       .from(QUERIES_TABLE)
       .select('*')
       .order('created_at', { ascending: false });
@@ -328,7 +330,9 @@ async function getStoredQueries(): Promise<QueryEntry[]> {
 
 async function saveQuery(entry: Omit<QueryEntry, 'id' | 'timestamp'>): Promise<void> {
   if (USE_SUPABASE) {
-    const { error } = await supabase
+    const client = getSupabase();
+    if (!client) return;
+    const { error } = await client
       .from(QUERIES_TABLE)
       .insert({
         name: entry.name,
@@ -354,7 +358,9 @@ async function saveQuery(entry: Omit<QueryEntry, 'id' | 'timestamp'>): Promise<v
 
 async function deleteAllQueries(): Promise<void> {
   if (USE_SUPABASE) {
-    const { error } = await supabase
+    const client = getSupabase();
+    if (!client) return;
+    const { error } = await client
       .from(QUERIES_TABLE)
       .delete()
       .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all
@@ -369,7 +375,9 @@ async function deleteAllQueries(): Promise<void> {
 
 async function deleteOneQuery(id: string): Promise<void> {
   if (USE_SUPABASE) {
-    const { error } = await supabase
+    const client = getSupabase();
+    if (!client) return;
+    const { error } = await client
       .from(QUERIES_TABLE)
       .delete()
       .eq('id', id);
