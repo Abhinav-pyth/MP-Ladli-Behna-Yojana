@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1e3a8a"/>
+      <stop offset="50%" style="stop-color:#1e40af"/>
+      <stop offset="100%" style="stop-color:#312e81"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#f97316"/>
+      <stop offset="100%" style="stop-color:#ea580c"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  
+  <!-- Decorative circles -->
+  <circle cx="100" cy="100" r="200" fill="#f97316" opacity="0.1"/>
+  <circle cx="1100" cy="530" r="250" fill="#3b82f6" opacity="0.1"/>
+  
+  <!-- Top accent bar -->
+  <rect x="0" y="0" width="1200" height="8" fill="url(#accent)"/>
+  
+  <!-- Emblem circle -->
+  <circle cx="150" cy="315" r="80" fill="white" opacity="0.95"/>
+  <text x="150" y="335" font-family="Arial, sans-serif" font-size="80" text-anchor="middle" fill="#1e40af">🏛</text>
+  
+  <!-- Main Title - Hindi -->
+  <text x="600" y="200" font-family="Arial, sans-serif" font-size="58" font-weight="bold" text-anchor="middle" fill="white">मध्य प्रदेश लाड़ली बहना योजना</text>
+  
+  <!-- Subtitle - English -->
+  <text x="600" y="270" font-family="Arial, sans-serif" font-size="36" text-anchor="middle" fill="#93c5fd">Madhya Pradesh Ladli Behna Yojana</text>
+  
+  <!-- Divider line -->
+  <rect x="400" y="300" width="400" height="3" fill="#f97316" rx="2"/>
+  
+  <!-- Benefit amount -->
+  <rect x="420" y="340" width="360" height="80" rx="15" fill="url(#accent)"/>
+  <text x="600" y="395" font-family="Arial, sans-serif" font-size="48" font-weight="bold" text-anchor="middle" fill="white">₹1,250 / Month</text>
+  
+  <!-- Description -->
+  <text x="600" y="470" font-family="Arial, sans-serif" font-size="22" text-anchor="middle" fill="#bfdbfe">पात्र महिलाओं को प्रति माह वित्तीय सहायता</text>
+  <text x="600" y="500" font-family="Arial, sans-serif" font-size="20" text-anchor="middle" fill="#93c5fd">Financial Assistance for Eligible Women via DBT</text>
+  
+  <!-- Bottom bar -->
+  <rect x="0" y="580" width="1200" height="50" fill="rgba(0,0,0,0.3)"/>
+  <text x="600" y="612" font-family="Arial, sans-serif" font-size="18" text-anchor="middle" fill="#93c5fd">Government of Madhya Pradesh | महिला एवं बाल विकास विभाग</text>
+  
+  <!-- Stars decoration -->
+  <text x="350" y="160" font-size="24" fill="#f97316">★</text>
+  <text x="850" y="160" font-size="24" fill="#f97316">★</text>
+</svg>
