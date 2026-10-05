@@ -1,6 +1,18 @@
-import { useState, useEffect, FormEvent } from 'react';
+import { useState, useEffect, FormEvent, useCallback } from 'react';
 
 type Language = 'hi' | 'en';
+
+interface QueryEntry {
+  id: string;
+  name: string;
+  mobile: string;
+  district: string;
+  query: string;
+  timestamp: string;
+}
+
+const ADMIN_PASSWORD = 'admin2026';
+const STORAGE_KEY = 'ladlibehna_queries';
 
 const translations = {
   hi: {
@@ -108,6 +120,27 @@ const translations = {
       disclaimer: 'अस्वीकरण: यह एक सिम्युलेटेड टेम्पलेट है जो संरचनात्मक मार्गदर्शन के लिए निर्मित किया गया है। यह मध्य प्रदेश सरकार की आधिकारिक वेबसाइट नहीं है।',
       rights: '© 2026 मध्य प्रदेश लाड़ली बहना योजना | सभी अधिकार सुरक्षित',
       designedFor: 'संरचनात्मक मार्गदर्शन हेतु डिज़ाइन किया गया',
+    },
+    admin: {
+      title: '🔐 एडमिन पैनल - सभी शिकायतें',
+      subtitle: 'यहाँ सभी सबमिट की गई शिकायतें/प्रश्न दिखाई देते हैं',
+      password: 'पासवर्ड दर्ज करें',
+      passwordPlaceholder: 'एडमिन पासवर्ड...',
+      login: 'लॉगिन',
+      logout: 'लॉगआउट',
+      wrongPassword: 'गलत पासवर्ड!',
+      noQueries: 'कोई शिकायत अभी तक प्राप्त नहीं हुई।',
+      totalQueries: 'कुल शिकायतें',
+      deleteAll: 'सब हटाएँ',
+      deleteOne: 'हटाएँ',
+      confirmDelete: 'क्या आप वाकई सभी शिकायतें हटाना चाहते हैं?',
+      name: 'नाम',
+      mobile: 'मोबाइल',
+      district: 'जिला',
+      query: 'शिकायत',
+      date: 'तिथि',
+      close: 'पैनल बंद करें',
+      exportData: 'डेटा निर्यात करें (JSON)',
     },
     districts: [
       'जबलपुर', 'भोपाल', 'इंदौर', 'ग्वालियर', 'उज्जैन', 'सागर',
@@ -226,6 +259,27 @@ const translations = {
       rights: '© 2026 Madhya Pradesh Ladli Behna Yojana | All Rights Reserved',
       designedFor: 'Designed for structural guidance',
     },
+    admin: {
+      title: '🔐 Admin Panel - All Queries',
+      subtitle: 'All submitted grievances/queries are displayed here',
+      password: 'Enter Password',
+      passwordPlaceholder: 'Admin password...',
+      login: 'Login',
+      logout: 'Logout',
+      wrongPassword: 'Wrong password!',
+      noQueries: 'No queries received yet.',
+      totalQueries: 'Total Queries',
+      deleteAll: 'Delete All',
+      deleteOne: 'Delete',
+      confirmDelete: 'Are you sure you want to delete all queries?',
+      name: 'Name',
+      mobile: 'Mobile',
+      district: 'District',
+      query: 'Query',
+      date: 'Date',
+      close: 'Close Panel',
+      exportData: 'Export Data (JSON)',
+    },
     districts: [
       'Jabalpur', 'Bhopal', 'Indore', 'Gwalior', 'Ujjain', 'Sagar',
       'Rewa', 'Shahdol', 'Satna', 'Chhatarpur', 'Damoh', 'Panna',
@@ -239,11 +293,45 @@ const translations = {
   },
 };
 
+// Utility functions for localStorage
+function getStoredQueries(): QueryEntry[] {
+  try {
+    const data = localStorage.getItem(STORAGE_KEY);
+    return data ? JSON.parse(data) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveQuery(entry: QueryEntry): void {
+  const queries = getStoredQueries();
+  queries.unshift(entry); // Add to beginning (newest first)
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(queries));
+}
+
+function deleteAllQueries(): void {
+  localStorage.removeItem(STORAGE_KEY);
+}
+
+function deleteOneQuery(id: string): void {
+  const queries = getStoredQueries().filter(q => q.id !== id);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(queries));
+}
+
+function generateId(): string {
+  return Date.now().toString(36) + Math.random().toString(36).substring(2);
+}
+
 export default function App() {
   const [lang, setLang] = useState<Language>('hi');
   const [showModal, setShowModal] = useState(false);
   const [eligibilityResult, setEligibilityResult] = useState<string | null>(null);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [showAdmin, setShowAdmin] = useState(false);
+  const [adminAuthenticated, setAdminAuthenticated] = useState(false);
+  const [adminPassword, setAdminPassword] = useState('');
+  const [adminError, setAdminError] = useState('');
+  const [storedQueries, setStoredQueries] = useState<QueryEntry[]>([]);
   const [formData, setFormData] = useState({
     name: '',
     mobile: '',
@@ -258,6 +346,37 @@ export default function App() {
   });
 
   const t = translations[lang];
+
+  // Load stored queries when admin panel opens
+  const refreshQueries = useCallback(() => {
+    setStoredQueries(getStoredQueries());
+  }, []);
+
+  // Check for #admin in URL on load
+  useEffect(() => {
+    if (window.location.hash === '#admin') {
+      setShowAdmin(true);
+    }
+  }, []);
+
+  // Keyboard shortcut: Ctrl+Shift+A to open admin
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.shiftKey && e.key === 'A') {
+        e.preventDefault();
+        setShowAdmin(prev => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Refresh queries when admin panel is shown
+  useEffect(() => {
+    if (showAdmin && adminAuthenticated) {
+      refreshQueries();
+    }
+  }, [showAdmin, adminAuthenticated, refreshQueries]);
 
   const toggleLanguage = () => {
     setLang(lang === 'hi' ? 'en' : 'hi');
@@ -297,10 +416,61 @@ export default function App() {
   const handleFormSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (validateForm()) {
+      // Save to localStorage
+      const entry: QueryEntry = {
+        id: generateId(),
+        name: formData.name,
+        mobile: formData.mobile,
+        district: formData.district,
+        query: formData.query,
+        timestamp: new Date().toISOString(),
+      };
+      saveQuery(entry);
+
       setShowModal(true);
       setFormData({ name: '', mobile: '', district: '', query: '' });
       setFormErrors({});
     }
+  };
+
+  const handleAdminLogin = () => {
+    if (adminPassword === ADMIN_PASSWORD) {
+      setAdminAuthenticated(true);
+      setAdminError('');
+      refreshQueries();
+    } else {
+      setAdminError(t.admin.wrongPassword);
+    }
+  };
+
+  const handleAdminLogout = () => {
+    setAdminAuthenticated(false);
+    setAdminPassword('');
+    setShowAdmin(false);
+    window.location.hash = '';
+  };
+
+  const handleDeleteAll = () => {
+    if (confirm(t.admin.confirmDelete)) {
+      deleteAllQueries();
+      refreshQueries();
+    }
+  };
+
+  const handleDeleteOne = (id: string) => {
+    deleteOneQuery(id);
+    refreshQueries();
+  };
+
+  const handleExportData = () => {
+    const data = JSON.stringify(storedQueries, null, 2);
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `ladlibehna_queries_${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   useEffect(() => {
@@ -336,12 +506,21 @@ export default function App() {
               <button onClick={() => scrollToSection('contact')} className="hover:text-orange-300 transition-colors">{t.nav.contact}</button>
             </nav>
 
-            <button
-              onClick={toggleLanguage}
-              className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-full text-sm font-bold transition-all duration-300 shadow-md hover:shadow-lg"
-            >
-              {lang === 'hi' ? 'English' : 'हिंदी'}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => { setShowAdmin(true); window.location.hash = '#admin'; }}
+                className="hidden md:flex items-center gap-1 bg-blue-700/50 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-xs transition-all"
+                title="Admin Panel (Ctrl+Shift+A)"
+              >
+                🔐
+              </button>
+              <button
+                onClick={toggleLanguage}
+                className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-full text-sm font-bold transition-all duration-300 shadow-md hover:shadow-lg"
+              >
+                {lang === 'hi' ? 'English' : 'हिंदी'}
+              </button>
+            </div>
           </div>
         </div>
       </header>
@@ -482,7 +661,6 @@ export default function App() {
           </div>
           <div className="bg-white rounded-3xl p-8 md:p-10 shadow-2xl">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Age */}
               <div className="md:col-span-2">
                 <label className="block text-sm font-bold text-gray-700 mb-2">{t.checker.age}</label>
                 <input
@@ -493,7 +671,6 @@ export default function App() {
                   className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none transition-colors"
                 />
               </div>
-              {/* Domicile */}
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">{t.checker.domicile}</label>
                 <div className="flex gap-3">
@@ -511,7 +688,6 @@ export default function App() {
                   </button>
                 </div>
               </div>
-              {/* Married */}
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">{t.checker.married}</label>
                 <div className="flex gap-3">
@@ -529,7 +705,6 @@ export default function App() {
                   </button>
                 </div>
               </div>
-              {/* Income Tax */}
               <div className="md:col-span-2">
                 <label className="block text-sm font-bold text-gray-700 mb-2">{t.checker.incomeTax}</label>
                 <div className="flex gap-3">
@@ -605,7 +780,6 @@ export default function App() {
           </div>
           <form onSubmit={handleFormSubmit} className="bg-white rounded-3xl p-8 md:p-10 shadow-xl border border-gray-100">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Name */}
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">{t.contact.name}</label>
                 <input
@@ -617,7 +791,6 @@ export default function App() {
                 />
                 {formErrors.name && <p className="text-red-500 text-sm mt-1">{formErrors.name}</p>}
               </div>
-              {/* Mobile */}
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">{t.contact.mobile}</label>
                 <input
@@ -629,7 +802,6 @@ export default function App() {
                 />
                 {formErrors.mobile && <p className="text-red-500 text-sm mt-1">{formErrors.mobile}</p>}
               </div>
-              {/* District */}
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">{t.contact.district}</label>
                 <select
@@ -644,7 +816,6 @@ export default function App() {
                 </select>
                 {formErrors.district && <p className="text-red-500 text-sm mt-1">{formErrors.district}</p>}
               </div>
-              {/* Query */}
               <div className="md:col-span-2">
                 <label className="block text-sm font-bold text-gray-700 mb-2">{t.contact.query}</label>
                 <textarea
@@ -671,7 +842,6 @@ export default function App() {
       <footer className="bg-gradient-to-br from-blue-900 via-blue-800 to-blue-900 text-white">
         <div className="max-w-7xl mx-auto px-4 py-12">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
-            {/* Official Website */}
             <div className="text-center md:text-left">
               <h3 className="text-lg font-bold mb-3 text-orange-300">{t.footer.officialWebsite}</h3>
               <a
@@ -683,12 +853,10 @@ export default function App() {
                 https://cmladlibahna.mp.gov.in/
               </a>
             </div>
-            {/* Helpdesk */}
             <div className="text-center">
               <h3 className="text-lg font-bold mb-3 text-orange-300">{t.footer.helpdesk}</h3>
               <p className="text-blue-200 text-lg font-mono">0755-2700800</p>
             </div>
-            {/* Email */}
             <div className="text-center md:text-right">
               <h3 className="text-lg font-bold mb-3 text-orange-300">{t.footer.email}</h3>
               <a
@@ -732,6 +900,155 @@ export default function App() {
             >
               {t.contact.closeModal}
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Admin Panel */}
+      {showAdmin && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl w-full max-w-5xl max-h-[90vh] overflow-y-auto shadow-2xl my-8">
+            {/* Admin Header */}
+            <div className="sticky top-0 bg-gradient-to-r from-gray-900 to-gray-800 text-white p-6 rounded-t-3xl z-10">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl font-bold">{t.admin.title}</h2>
+                  <p className="text-gray-300 text-sm mt-1">{t.admin.subtitle}</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  {adminAuthenticated && (
+                    <>
+                      <button
+                        onClick={handleExportData}
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all"
+                      >
+                        📥 {t.admin.exportData}
+                      </button>
+                      <button
+                        onClick={handleAdminLogout}
+                        className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all"
+                      >
+                        {t.admin.logout}
+                      </button>
+                    </>
+                  )}
+                  <button
+                    onClick={() => { setShowAdmin(false); window.location.hash = ''; }}
+                    className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6 md:p-8">
+              {!adminAuthenticated ? (
+                /* Login Form */
+                <div className="max-w-sm mx-auto py-12">
+                  <div className="text-center mb-8">
+                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <span className="text-3xl">🔐</span>
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-800">{t.admin.password}</h3>
+                  </div>
+                  <input
+                    type="password"
+                    value={adminPassword}
+                    onChange={(e) => { setAdminPassword(e.target.value); setAdminError(''); }}
+                    onKeyDown={(e) => e.key === 'Enter' && handleAdminLogin()}
+                    placeholder={t.admin.passwordPlaceholder}
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none transition-colors mb-4"
+                  />
+                  {adminError && <p className="text-red-500 text-sm mb-4">{adminError}</p>}
+                  <button
+                    onClick={handleAdminLogin}
+                    className="w-full bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900 text-white py-3 rounded-xl font-bold transition-all"
+                  >
+                    {t.admin.login}
+                  </button>
+                  <p className="text-center text-gray-400 text-xs mt-4">
+                    {lang === 'hi' ? 'संकेत: पासवर्ड "admin2026" है' : 'Hint: Password is "admin2026"'}
+                  </p>
+                </div>
+              ) : (
+                /* Queries Dashboard */
+                <div>
+                  {/* Stats */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+                    <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-center">
+                      <p className="text-3xl font-bold text-blue-800">{storedQueries.length}</p>
+                      <p className="text-sm text-blue-600">{t.admin.totalQueries}</p>
+                    </div>
+                    <div className="bg-green-50 border border-green-100 rounded-xl p-4 text-center">
+                      <p className="text-3xl font-bold text-green-800">
+                        {storedQueries.filter(q => {
+                          const today = new Date().toDateString();
+                          return new Date(q.timestamp).toDateString() === today;
+                        }).length}
+                      </p>
+                      <p className="text-sm text-green-600">{lang === 'hi' ? 'आज' : 'Today'}</p>
+                    </div>
+                    <div className="bg-orange-50 border border-orange-100 rounded-xl p-4 text-center">
+                      <button
+                        onClick={handleDeleteAll}
+                        className="text-orange-700 font-bold hover:text-orange-900 transition-colors"
+                      >
+                        🗑️ {t.admin.deleteAll}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Queries List */}
+                  {storedQueries.length === 0 ? (
+                    <div className="text-center py-16 text-gray-400">
+                      <span className="text-5xl block mb-4">📭</span>
+                      <p className="text-lg">{t.admin.noQueries}</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {storedQueries.map((entry) => (
+                        <div key={entry.id} className="bg-gray-50 border border-gray-200 rounded-xl p-5 hover:shadow-md transition-all">
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                              <div>
+                                <p className="text-xs text-gray-500 font-medium uppercase">{t.admin.name}</p>
+                                <p className="font-semibold text-gray-800">{entry.name}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-gray-500 font-medium uppercase">{t.admin.mobile}</p>
+                                <p className="font-semibold text-gray-800 font-mono">{entry.mobile}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-gray-500 font-medium uppercase">{t.admin.district}</p>
+                                <p className="font-semibold text-gray-800">{entry.district}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-gray-500 font-medium uppercase">{t.admin.date}</p>
+                                <p className="font-semibold text-gray-800 text-sm">
+                                  {new Date(entry.timestamp).toLocaleString(lang === 'hi' ? 'hi-IN' : 'en-IN')}
+                                </p>
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => handleDeleteOne(entry.id)}
+                              className="text-red-500 hover:text-red-700 hover:bg-red-50 p-2 rounded-lg transition-all flex-shrink-0"
+                              title={t.admin.deleteOne}
+                            >
+                              🗑️
+                            </button>
+                          </div>
+                          <div className="mt-3 pt-3 border-t border-gray-200">
+                            <p className="text-xs text-gray-500 font-medium uppercase mb-1">{t.admin.query}</p>
+                            <p className="text-gray-700">{entry.query}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
