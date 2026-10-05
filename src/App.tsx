@@ -582,21 +582,12 @@ export default function App() {
               <button onClick={() => scrollToSection('contact')} className="hover:text-orange-300 transition-colors">{t.nav.contact}</button>
             </nav>
 
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => { setShowAdmin(true); window.location.hash = '#admin'; }}
-                className="hidden md:flex items-center gap-1 bg-blue-700/50 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-xs transition-all"
-                title="Admin Panel (Ctrl+Shift+A)"
-              >
-                🔐
-              </button>
-              <button
-                onClick={toggleLanguage}
-                className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-full text-sm font-bold transition-all duration-300 shadow-md hover:shadow-lg"
-              >
-                {lang === 'hi' ? 'English' : 'हिंदी'}
-              </button>
-            </div>
+            <button
+              onClick={toggleLanguage}
+              className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-full text-sm font-bold transition-all duration-300 shadow-md hover:shadow-lg"
+            >
+              {lang === 'hi' ? 'English' : 'हिंदी'}
+            </button>
           </div>
         </div>
       </header>
