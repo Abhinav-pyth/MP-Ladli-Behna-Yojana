@@ -2,15 +2,25 @@
 
 A professional bilingual (Hindi/English) government portal for the MP Ladli Behna Yojana scheme with a real-time admin dashboard to view all user queries.
 
-## Features
+---
 
-- 🌐 Instant bilingual toggle (Hindi ↔ English)
-- 📋 Interactive eligibility checker
-- 📝 Grievance/contact form with real-time validation
-- 🔒 Hidden admin panel to view ALL users' queries (from cloud database)
-- 📱 Fully responsive design
-- 🚀 Optimized for Vercel deployment
-- 💾 Supabase backend for multi-user query storage
+## 🚨 CRITICAL: Environment Variable Naming
+
+**This project uses Vite, NOT Next.js.** Vite only exposes environment variables prefixed with `VITE_`.
+
+If you're deploying to Vercel, you **MUST** use the `VITE_` prefix. The `NEXT_PUBLIC_*` prefix will NOT work.
+
+### ❌ WRONG (won't work):
+```
+NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_xxx
+```
+
+### ✅ CORRECT (will work):
+```
+VITE_SUPABASE_URL=https://xxx.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_xxx
+```
 
 ---
 
@@ -25,8 +35,6 @@ To view all stored queries:
 ---
 
 ## 🗄️ Setting Up Supabase (To See ALL Users' Queries)
-
-By default, queries are stored in the browser's localStorage (only YOUR device). To see queries from ALL users across the internet, set up Supabase:
 
 ### Step 1: Create Supabase Account
 1. Go to [https://supabase.com](https://supabase.com)
@@ -47,16 +55,22 @@ By default, queries are stored in the browser's localStorage (only YOUR device).
 1. Go to **Project Settings** (gear icon) > **API**
 2. Copy these two values:
    - **Project URL** (looks like `https://xxxxx.supabase.co`)
-   - **anon public key** (a long string starting with `eyJ...`)
+   - **publishable key / anon public key** (starts with `sb_publishable_` or `eyJ...`)
 
-### Step 4: Configure Environment Variables
-1. In your project root, create a file named `.env.local`
-2. Add your keys:
-```
-VITE_SUPABASE_URL=https://your-project-id.supabase.co
-VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-```
-3. Restart your dev server (`npm run dev`)
+### Step 4: Configure Environment Variables in Vercel
+1. Go to **Vercel Dashboard → Your Project → Settings → Environment Variables**
+2. Add these **two variables** with the **`VITE_` prefix**:
+
+| Variable Name | Value |
+|---|---|
+| `VITE_SUPABASE_URL` | `https://fvedrmhlihjbpttygvzo.supabase.co` |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | `sb_publishable_N66NMPesrWptcBzE4e65dA_q4fU2A3m` |
+
+3. ⚠️ **IMPORTANT**: If you already have `NEXT_PUBLIC_*` variables, either:
+   - **Rename them** to `VITE_*` (recommended), OR
+   - **Delete them** and add new ones with `VITE_*` prefix
+
+4. **Redeploy** your project (Vercel → Deployments → Redeploy)
 
 ### Step 5: Verify
 - Open the admin panel
@@ -75,7 +89,7 @@ VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 3. Import your repository
 4. In "Environment Variables", add:
    - `VITE_SUPABASE_URL` = your URL
-   - `VITE_SUPABASE_ANON_KEY` = your anon key
+   - `VITE_SUPABASE_PUBLISHABLE_KEY` = your key
 5. Click "Deploy"
 
 ### Option 2: Via Vercel CLI
@@ -84,12 +98,6 @@ npm i -g vercel
 vercel --prod
 ```
 Then add environment variables in the Vercel dashboard.
-
-### Option 3: Direct Deploy
-```bash
-vercel
-vercel --prod
-```
 
 ---
 
@@ -100,7 +108,7 @@ vercel --prod
   - Using Supabase Auth for real authentication
   - Restricting SELECT/DELETE policies to authenticated users
   - Moving the password check to a server-side function
-- The `anon` key is safe to expose in frontend code (it's designed for this)
+- The `publishable` / `anon` key is safe to expose in frontend code (it's designed for this)
 - Never expose the `service_role` key in frontend code
 
 ---
@@ -111,7 +119,7 @@ vercel --prod
 ├── src/
 │   ├── App.tsx              # Main application component
 │   ├── lib/
-│   │   └── supabase.ts      # Supabase client configuration
+│   │   └── supabase.ts      # Supabase client configuration (lazy init)
 │   ├── index.css            # Global styles
 │   └── main.tsx             # Entry point
 ├── setup.sql                # Database schema for Supabase
