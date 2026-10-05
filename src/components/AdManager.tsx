@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 
 // ============================================================
 // AD MANAGER COMPONENT
-// Handles all ad placements: banners, popunder, and social bar
+// Handles ad placements: leaderboard (728x90) and mobile banner (320x50)
 // ============================================================
 
 // Helper to safely inject external scripts
@@ -22,27 +22,6 @@ function injectInlineScript(code: string, id: string): void {
   script.id = id;
   script.innerHTML = code;
   document.body.appendChild(script);
-}
-
-// ============================================================
-// GLOBAL ADS (Popunder + SocialBar) - Load once on mount
-// ============================================================
-export function GlobalAds() {
-  useEffect(() => {
-    // Popunder Ad
-    injectScript(
-      'https://pl31670726.profitableratecpmnetwork.com/bc/a1/2e/bca12e71b6e18b448d2a39bec7b115d5.js',
-      'ad-popunder'
-    );
-
-    // SocialBar Ad
-    injectScript(
-      'https://pl31670725.profitableratecpmnetwork.com/4b/df/76/4bdf7646ef1760eb0ce548e90749fc41.js',
-      'ad-socialbar'
-    );
-  }, []);
-
-  return null;
 }
 
 // ============================================================
@@ -178,7 +157,6 @@ export function AdInContent() {
 export function AdManager() {
   return (
     <>
-      <GlobalAds />
       <AdLeaderboard728x90 />
       <AdMobileBanner320x50 />
     </>
